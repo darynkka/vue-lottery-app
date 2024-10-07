@@ -46,7 +46,7 @@
       </div>
 
       <div class="text-end">
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit" class="btn btn-primary rounded-1">Save</button>
       </div>
     </form>
   </div>
@@ -76,7 +76,6 @@ export default {
     const onSubmit = () => {
       errors.value = {}
 
-      // Validate required fields
       if (!name.value) {
         errors.value.name = 'Name is required.'
       }
@@ -97,10 +96,9 @@ export default {
       }
 
       if (Object.keys(errors.value).length > 0) {
-        return // Stop if there are errors
+        return
       }
 
-      // Emit the new winner data to parent
       emit('add-winner', {
         name: name.value,
         dob: dob.value,
@@ -108,7 +106,6 @@ export default {
         phone: phone.value
       })
 
-      // Clear the form fields
       name.value = ''
       dob.value = ''
       email.value = ''
