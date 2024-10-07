@@ -5,8 +5,15 @@
       <button class="btn btn-primary">New winner</button>
     </div>
 
-    <WinnerForm />
+    <WinnerForm @add-winner="onAddWinner" />
     <WinnersTable :winners="winners" />
+
+    <div v-if="showSuccessModal" class="modal">
+      <div class="modal-content">
+        <span class="close" @click="showSuccessModal = false">&times;</span>
+        <p>Winner added successfully!</p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -21,33 +28,18 @@ export default {
     WinnerForm
   },
   setup() {
-    const name = ref('')
-    const dob = ref('')
-    const email = ref('')
-    const phone = ref('')
-
     const winners = ref([])
+    const showSuccessModal = ref(false)
 
-    const onSubmit = () => {
-      winners.value.push({
-        name: name.value,
-        dob: dob.value,
-        email: email.value,
-        phone: phone.value
-      })
-      name.value = ''
-      dob.value = ''
-      email.value = ''
-      phone.value = ''
+    const onAddWinner = (winner) => {
+      winners.value.push(winner)
+      showSuccessModal.value = true
     }
 
     return {
-      name,
-      dob,
-      email,
-      phone,
       winners,
-      onSubmit
+      onAddWinner,
+      showSuccessModal
     }
   }
 }
@@ -72,14 +64,46 @@ input,
 button {
   border-radius: 0;
 }
-.text-end {
-  text-align: right;
-}
 
 .new-winner-block {
   background-color: white;
   padding: 15px;
   border-radius: 5px;
   width: 100%;
+}
+.modal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  width: 300px;
+  height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  align-items: center;
+  position: relative;
+}
+.modal-content p {
+  margin: 0;
+}
+.close {
+  cursor: pointer;
+  position: absolute;
+  top: 10px;
+  right: 10px;
 }
 </style>
