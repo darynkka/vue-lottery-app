@@ -186,7 +186,7 @@ button {
 
 <style>
 body {
-  background-color: rgba(207, 207, 207, 0.1);
+  background-color: rgba(207, 207, 207, 0.2);
   box-sizing: border-box;
 }
 </style>
