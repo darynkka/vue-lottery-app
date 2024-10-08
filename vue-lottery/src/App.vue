@@ -183,7 +183,6 @@ button {
   right: 10px;
 }
 </style>
-
 <style>
 body {
   background-color: rgba(207, 207, 207, 0.2);
