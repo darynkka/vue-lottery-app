@@ -17,7 +17,20 @@
 <script>
 export default {
   name: 'Custom-Modal',
-  emits: ['close']
+  emits: ['close'],
+  mounted() {
+    document.addEventListener('keyup', this.handleKeyup)
+  },
+  unmounted() {
+    document.removeEventListener('keyup', this.handleKeyup)
+  },
+  methods: {
+    handleKeyup(event) {
+      if (event.key === 'Escape') {
+        this.$emit('close')
+      }
+    }
+  }
 }
 </script>
 

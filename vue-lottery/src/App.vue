@@ -12,7 +12,23 @@
 
     <WinnerForm @add-winner="onAddWinner" />
     <SearchBar @filter-by-name="filterByName" />
-    <WinnersTable :winners="filteredWinners" :searchTerm="searchTerm" />
+    <WinnersTable :winners="filteredWinners" @confirm-delete="openDeleteConfirmation" />
+
+    <!-- Модальне вікно для підтвердження видалення -->
+    <CustomModal v-if="showDeleteModal" @close="closeDeleteModal">
+      <template #header>Confirm Deletion</template>
+      <template #body>
+        <p>
+          Ви дійсно бажаєте видалити учасника {{ participantToDelete.name }} ({{
+            participantToDelete.email
+          }})?
+        </p>
+        <div class="d-flex justify-content-end">
+          <button class="btn btn-secondary me-2" @click="closeDeleteModal">Ні</button>
+          <button class="btn btn-danger" @click="deleteParticipant">Так</button>
+        </div>
+      </template>
+    </CustomModal>
 
     <CustomModal v-if="showSuccessModal" @close="showSuccessModal = false">
       <template #header>Success</template>
@@ -54,6 +70,8 @@ export default {
     const searchTerm = ref('')
     const showSuccessModal = ref(false)
     const showErrorModal = ref(false)
+    const showDeleteModal = ref(false)
+    const participantToDelete = ref(null)
     const errorMessage = ref('')
 
     onMounted(() => {
@@ -62,6 +80,7 @@ export default {
         winners.value = JSON.parse(winnersData)
       }
     })
+
     const onAddWinner = (winner) => {
       const emailExists = winners.value.some((w) => w.email === winner.email)
 
@@ -74,6 +93,24 @@ export default {
       winners.value.push(winner)
       localStorage.setItem('winners', JSON.stringify(winners.value))
       showSuccessModal.value = true
+    }
+
+    const openDeleteConfirmation = (winner) => {
+      participantToDelete.value = winner
+      showDeleteModal.value = true
+    }
+
+    const closeDeleteModal = () => {
+      showDeleteModal.value = false
+      participantToDelete.value = null
+    }
+
+    const deleteParticipant = () => {
+      winners.value = winners.value.filter(
+        (winner) => winner.email !== participantToDelete.value.email
+      )
+      localStorage.setItem('winners', JSON.stringify(winners.value))
+      showDeleteModal.value = false
     }
 
     const selectRandomWinner = () => {
@@ -111,9 +148,14 @@ export default {
       onAddWinner,
       showSuccessModal,
       showErrorModal,
+      showDeleteModal,
+      participantToDelete,
       errorMessage,
       selectRandomWinner,
       removeWinner,
+      openDeleteConfirmation,
+      closeDeleteModal,
+      deleteParticipant,
       filterByName,
       searchTerm,
       filteredWinners

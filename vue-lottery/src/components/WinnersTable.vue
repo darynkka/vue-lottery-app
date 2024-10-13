@@ -6,14 +6,22 @@
           <th>#</th>
           <th>
             Name
-            <button class="btn btn-sm" @click="$emit('sort', 'name')">
-              <i class="bi bi-sort-alpha-down"></i>
+            <button
+              class="btn"
+              @click="$emit('sort', 'name')"
+              style="background: transparent; border: none; width: 20px; height: 20px"
+            >
+              <i class="bi bi-sort-alpha-down" style="color: red; font-size: 2rem"></i>
             </button>
           </th>
           <th>
             Date of Birth
-            <button class="btn btn-sm" @click="$emit('sort', 'dob')">
-              <i class="bi bi-sort-down"></i>
+            <button
+              class="btn"
+              @click="$emit('sort', 'dob')"
+              style="background: transparent; border: none; width: 20px; height: 20px"
+            >
+              <i class="bi bi-sort-down" style="color: black; font-size: 1.5rem"></i>
             </button>
           </th>
           <th>Email</th>
@@ -32,7 +40,7 @@
             <button class="btn btn-sm btn-primary me-2" @click="$emit('edit-winner', winner)">
               Edit
             </button>
-            <button class="btn btn-sm btn-danger" @click="$emit('delete-winner', winner)">
+            <button class="btn btn-sm btn-danger" @click="$emit('confirm-delete', winner)">
               Delete
             </button>
           </td>
@@ -48,6 +56,6 @@ export default {
     winners: Array,
     searchTerm: String
   },
-  emits: ['edit-winner', 'delete-winner', 'sort']
+  emits: ['edit-winner', 'confirm-delete', 'sort']
 }
 </script>
