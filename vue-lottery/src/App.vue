@@ -12,9 +12,12 @@
 
     <WinnerForm @add-winner="onAddWinner" />
     <SearchBar @filter-by-name="filterByName" />
-    <WinnersTable :winners="filteredWinners" @confirm-delete="openDeleteConfirmation" />
+    <WinnersTable
+      :winners="filteredWinners"
+      @confirm-delete="openDeleteConfirmation"
+      @edit-winner="openEditWinnerModal"
+    />
 
-    <!-- Модальне вікно для підтвердження видалення -->
     <CustomModal v-if="showDeleteModal" @close="closeDeleteModal">
       <template #header>Confirm Deletion</template>
       <template #body>
@@ -27,6 +30,31 @@
           <button class="btn btn-secondary me-2" @click="closeDeleteModal">Ні</button>
           <button class="btn btn-danger" @click="deleteParticipant">Так</button>
         </div>
+      </template>
+    </CustomModal>
+
+    <CustomModal v-if="showEditModal" @close="closeEditModal">
+      <template #header>Edit Winner</template>
+      <template #body>
+        <form @submit.prevent="updateWinner">
+          <div class="mb-3">
+            <label for="name" class="form-label">Name</label>
+            <input type="text" class="form-control" v-model="editForm.name" id="name" required />
+          </div>
+          <div class="mb-3">
+            <label for="dob" class="form-label">Date of Birth</label>
+            <input type="date" class="form-control" v-model="editForm.dob" id="dob" required />
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" v-model="editForm.email" id="email" required />
+          </div>
+          <div class="mb-3">
+            <label for="phone" class="form-label">Phone number</label>
+            <input type="text" class="form-control" v-model="editForm.phone" id="phone" required />
+          </div>
+          <button type="submit" class="btn btn-primary">Оновити дані</button>
+        </form>
       </template>
     </CustomModal>
 
@@ -71,7 +99,14 @@ export default {
     const showSuccessModal = ref(false)
     const showErrorModal = ref(false)
     const showDeleteModal = ref(false)
+    const showEditModal = ref(false)
     const participantToDelete = ref(null)
+    const editForm = ref({
+      name: '',
+      dob: '',
+      email: '',
+      phone: ''
+    })
     const errorMessage = ref('')
 
     onMounted(() => {
@@ -113,6 +148,31 @@ export default {
       showDeleteModal.value = false
     }
 
+    const openEditWinnerModal = (winner) => {
+      editForm.value = { ...winner }
+      showEditModal.value = true
+    }
+
+    const closeEditModal = () => {
+      showEditModal.value = false
+      editForm.value = {
+        name: '',
+        dob: '',
+        email: '',
+        phone: ''
+      }
+    }
+
+    const updateWinner = () => {
+      const index = winners.value.findIndex((w) => w.email === editForm.value.email)
+
+      if (index !== -1) {
+        winners.value[index] = { ...editForm.value }
+        localStorage.setItem('winners', JSON.stringify(winners.value))
+        closeEditModal()
+      }
+    }
+
     const selectRandomWinner = () => {
       if (winners.value.length === 0 || selectedWinners.value.length >= 3) return
 
@@ -149,6 +209,8 @@ export default {
       showSuccessModal,
       showErrorModal,
       showDeleteModal,
+      showEditModal,
+      editForm,
       participantToDelete,
       errorMessage,
       selectRandomWinner,
@@ -156,6 +218,9 @@ export default {
       openDeleteConfirmation,
       closeDeleteModal,
       deleteParticipant,
+      openEditWinnerModal,
+      closeEditModal,
+      updateWinner,
       filterByName,
       searchTerm,
       filteredWinners

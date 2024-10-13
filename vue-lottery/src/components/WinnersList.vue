@@ -28,6 +28,11 @@ export default {
 }
 </script>
 
+<style>
+body {
+  background: rgba(207, 207, 207, 0.2);
+}
+</style>
 <style scoped>
 .winners-box {
   border: 1px solid gray;
