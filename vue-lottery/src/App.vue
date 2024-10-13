@@ -14,29 +14,30 @@
     <SearchBar @filter-by-name="filterByName" />
     <WinnersTable :winners="filteredWinners" :searchTerm="searchTerm" />
 
-    <div v-if="showSuccessModal" class="modal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Success</h5>
-            <button type="button" class="btn-close" @click="showSuccessModal = false"></button>
-          </div>
-          <div class="modal-body">
-            <p>Winner added successfully!</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <CustomModal v-if="showSuccessModal" @close="showSuccessModal = false">
+      <template #header>Success</template>
+      <template #body>
+        <p>Winner added successfully!</p>
+      </template>
+    </CustomModal>
+
+    <CustomModal v-if="showErrorModal" @close="showErrorModal = false">
+      <template #header>Error</template>
+      <template #body>
+        <p>{{ errorMessage }}</p>
+      </template>
+    </CustomModal>
   </div>
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import WinnersTable from './components/WinnersTable.vue'
 import WinnerForm from './components/WinnerForm.vue'
 import WinnersList from './components/WinnersList.vue'
 import WinnerButton from './components/WinnerButton.vue'
 import SearchBar from './components/SearchBar.vue'
+import CustomModal from './components/Modal.vue'
 
 export default {
   components: {
@@ -44,16 +45,34 @@ export default {
     WinnerForm,
     WinnersList,
     WinnerButton,
-    SearchBar
+    SearchBar,
+    CustomModal
   },
   setup() {
     const winners = ref([])
     const selectedWinners = ref([])
     const searchTerm = ref('')
     const showSuccessModal = ref(false)
+    const showErrorModal = ref(false)
+    const errorMessage = ref('')
 
+    onMounted(() => {
+      const winnersData = localStorage.getItem('winners')
+      if (winnersData) {
+        winners.value = JSON.parse(winnersData)
+      }
+    })
     const onAddWinner = (winner) => {
+      const emailExists = winners.value.some((w) => w.email === winner.email)
+
+      if (emailExists) {
+        errorMessage.value = 'A winner with this email already exists.'
+        showErrorModal.value = true
+        return
+      }
+
       winners.value.push(winner)
+      localStorage.setItem('winners', JSON.stringify(winners.value))
       showSuccessModal.value = true
     }
 
@@ -91,6 +110,8 @@ export default {
       selectedWinners,
       onAddWinner,
       showSuccessModal,
+      showErrorModal,
+      errorMessage,
       selectRandomWinner,
       removeWinner,
       filterByName,
