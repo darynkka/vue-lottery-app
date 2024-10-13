@@ -1,8 +1,8 @@
 <template>
   <div class="card p-4 mb-4">
-    <h5 class="card-title">REGISTER FORM</h5>
+    <h5 class="card-title">{{ initialData ? 'EDIT FORM' : 'REGISTER FORM' }}</h5>
     <p class="text-muted">Please fill in all the fields.</p>
-    <form @submit.prevent="onSubmit">
+    <form @submit.prevent="onSubmit" @keyup.enter="onSubmit">
       <FormInput
         id="name"
         label="Name"
@@ -14,19 +14,29 @@
       <FormInput id="email" label="Email" v-model="email" type="email" :error="errors.email" />
       <FormInput id="phone" label="Phone number" v-model="phone" type="tel" :error="errors.phone" />
       <div class="text-end">
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit" class="btn btn-primary">{{ submitButtonText || 'Save' }}</button>
       </div>
     </form>
   </div>
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import FormInput from './FormInput.vue'
 
 export default {
   components: {
     FormInput
+  },
+  props: {
+    initialData: {
+      type: Object,
+      default: null
+    },
+    submitButtonText: {
+      type: String,
+      default: 'Save'
+    }
   },
   setup(props, { emit }) {
     const name = ref('')
@@ -34,6 +44,15 @@ export default {
     const email = ref('')
     const phone = ref('')
     const errors = ref({})
+
+    onMounted(() => {
+      if (props.initialData) {
+        name.value = props.initialData.name
+        dob.value = props.initialData.dob
+        email.value = props.initialData.email
+        phone.value = props.initialData.phone
+      }
+    })
 
     const validateEmail = (email) => {
       const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -78,10 +97,12 @@ export default {
         phone: phone.value
       })
 
-      name.value = ''
-      dob.value = ''
-      email.value = ''
-      phone.value = ''
+      if (!props.initialData) {
+        name.value = ''
+        dob.value = ''
+        email.value = ''
+        phone.value = ''
+      }
     }
 
     return {

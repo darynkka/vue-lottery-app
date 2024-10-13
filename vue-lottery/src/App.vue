@@ -3,15 +3,16 @@
     <div class="bg-white mb-3">
       <div class="d-flex justify-content-between align-items-center p-3">
         <WinnersList :winners="selectedWinners" @remove-winner="removeWinner" />
-        <NewWinnerButton
+        <WinnerButton
           @select-winner="selectRandomWinner"
           :disabled="winners.length === 0 || selectedWinners.length >= 3"
         />
       </div>
     </div>
 
-    <RegistrationForm @add-winner="onAddWinner" />
-    <WinnersTable :winners="winners" />
+    <WinnerForm @add-winner="onAddWinner" />
+    <SearchBar @filter-by-name="filterByName" />
+    <WinnersTable :winners="filteredWinners" :searchTerm="searchTerm" />
 
     <div v-if="showSuccessModal" class="modal" tabindex="-1">
       <div class="modal-dialog">
@@ -30,22 +31,25 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import WinnersTable from './components/WinnersTable.vue'
-import RegistrationForm from './components/WinnerForm.vue'
+import WinnerForm from './components/WinnerForm.vue'
 import WinnersList from './components/WinnersList.vue'
-import NewWinnerButton from './components/WinnerButton.vue'
+import WinnerButton from './components/WinnerButton.vue'
+import SearchBar from './components/SearchBar.vue'
 
 export default {
   components: {
     WinnersTable,
-    RegistrationForm,
+    WinnerForm,
     WinnersList,
-    NewWinnerButton
+    WinnerButton,
+    SearchBar
   },
   setup() {
     const winners = ref([])
     const selectedWinners = ref([])
+    const searchTerm = ref('')
     const showSuccessModal = ref(false)
 
     const onAddWinner = (winner) => {
@@ -70,20 +74,29 @@ export default {
       selectedWinners.value.splice(index, 1)
     }
 
+    const filterByName = (name) => {
+      searchTerm.value = name
+    }
+
+    const filteredWinners = computed(() => {
+      if (!searchTerm.value) {
+        return winners.value
+      }
+      const search = searchTerm.value.toLowerCase()
+      return winners.value.filter((winner) => winner.name.toLowerCase().includes(search))
+    })
+
     return {
       winners,
       selectedWinners,
       onAddWinner,
       showSuccessModal,
       selectRandomWinner,
-      removeWinner
+      removeWinner,
+      filterByName,
+      searchTerm,
+      filteredWinners
     }
   }
 }
 </script>
-
-<style>
-body {
-  background-color: rgba(207, 207, 207, 0.2);
-}
-</style>
