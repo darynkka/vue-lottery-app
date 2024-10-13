@@ -8,20 +8,26 @@
             Name
             <button
               class="btn"
-              @click="$emit('sort', 'name')"
+              @click="toggleSort('name')"
               style="background: transparent; border: none; width: 20px; height: 20px"
             >
-              <i class="bi bi-sort-alpha-down" style="color: red; font-size: 2rem"></i>
+              <i
+                :class="sortOrder === 'asc' ? 'bi bi-sort-down' : 'bi bi-sort-up'"
+                class="icons"
+              ></i>
             </button>
           </th>
           <th>
             Date of Birth
             <button
               class="btn"
-              @click="$emit('sort', 'dob')"
+              @click="toggleSort('dob')"
               style="background: transparent; border: none; width: 20px; height: 20px"
             >
-              <i class="bi bi-sort-down" style="color: black; font-size: 1.5rem"></i>
+              <i
+                :class="sortOrder === 'asc' ? 'bi bi-sort-down' : 'bi bi-sort-up'"
+                class="icons"
+              ></i>
             </button>
           </th>
           <th>Email</th>
@@ -30,7 +36,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(winner, index) in winners" :key="index">
+        <tr v-for="(winner, index) in sortedWinners" :key="index">
           <td class="align-middle">{{ index + 1 }}</td>
           <td class="align-middle">{{ winner.name }}</td>
           <td class="align-middle">{{ winner.dob }}</td>
@@ -56,6 +62,41 @@ export default {
     winners: Array,
     searchTerm: String
   },
-  emits: ['edit-winner', 'confirm-delete', 'sort']
+  data() {
+    return {
+      sortType: 'name',
+      sortOrder: 'asc'
+    }
+  },
+  computed: {
+    sortedWinners() {
+      return this.winners.slice().sort((a, b) => {
+        const modifier = this.sortOrder === 'asc' ? 1 : -1
+        if (this.sortType === 'name') {
+          return a.name.localeCompare(b.name) * modifier
+        } else if (this.sortType === 'dob') {
+          return new Date(a.dob) - new Date(b.dob) * modifier
+        }
+      })
+    }
+  },
+  methods: {
+    toggleSort(type) {
+      if (this.sortType === type) {
+        this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'
+      } else {
+        this.sortType = type
+        this.sortOrder = 'asc'
+      }
+    }
+  },
+  emits: ['edit-winner', 'confirm-delete']
 }
 </script>
+<style scoped>
+.icons {
+  position: relative;
+  bottom: 8px;
+  right: 7px;
+}
+</style>
