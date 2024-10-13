@@ -1,0 +1,37 @@
+<template>
+  <div class="winners-box p-2 d-flex align-items-center">
+    <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center">
+      <WinnerItem
+        v-for="(winner, index) in winners"
+        :key="index"
+        :winner="winner"
+        @remove="$emit('remove-winner', index)"
+      />
+    </div>
+  </div>
+</template>
+
+<script>
+import WinnerItem from './WinnerItem.vue'
+
+export default {
+  components: {
+    WinnerItem
+  },
+  props: {
+    winners: {
+      type: Array,
+      required: true
+    }
+  },
+  emits: ['remove-winner']
+}
+</script>
+
+<style scoped>
+.winners-box {
+  border: 1px solid gray;
+  width: 80%;
+  min-height: 40px;
+}
+</style>

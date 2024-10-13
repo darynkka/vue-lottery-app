@@ -1,6 +1,6 @@
 <template>
   <div class="table-responsive">
-    <table class="table table-bordered">
+    <table class="table table-bordered text-center">
       <thead>
         <tr>
           <th>#</th>
@@ -12,11 +12,11 @@
       </thead>
       <tbody>
         <tr v-for="(winner, index) in winners" :key="index">
-          <td>{{ index + 1 }}</td>
-          <td>{{ winner.name }}</td>
-          <td>{{ winner.dob }}</td>
-          <td>{{ winner.email }}</td>
-          <td>{{ winner.phone }}</td>
+          <td class="align-middle">{{ index + 1 }}</td>
+          <td class="align-middle">{{ winner.name }}</td>
+          <td class="align-middle">{{ winner.dob }}</td>
+          <td class="align-middle">{{ winner.email }}</td>
+          <td class="align-middle">{{ winner.phone }}</td>
         </tr>
       </tbody>
     </table>
@@ -33,11 +33,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-table th,
-td {
-  text-align: center;
-  vertical-align: middle;
-}
-</style>
