@@ -56,43 +56,47 @@
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    winners: Array,
-    searchTerm: String
+<script setup>
+import { ref, computed } from 'vue'
+
+const props = defineProps({
+  winners: {
+    type: Array,
+    required: true
   },
-  data() {
-    return {
-      sortType: 'name',
-      sortOrder: 'asc'
+  searchTerm: {
+    type: String,
+    default: ''
+  }
+})
+
+const emit = defineEmits(['edit-winner', 'confirm-delete'])
+
+const sortType = ref('name')
+const sortOrder = ref('asc')
+
+const sortedWinners = computed(() => {
+  return [...props.winners].sort((a, b) => {
+    const modifier = sortOrder.value === 'asc' ? 1 : -1
+    if (sortType.value === 'name') {
+      return a.name.localeCompare(b.name) * modifier
+    } else if (sortType.value === 'dob') {
+      return (new Date(a.dob) - new Date(b.dob)) * modifier
     }
-  },
-  computed: {
-    sortedWinners() {
-      return this.winners.slice().sort((a, b) => {
-        const modifier = this.sortOrder === 'asc' ? 1 : -1
-        if (this.sortType === 'name') {
-          return a.name.localeCompare(b.name) * modifier
-        } else if (this.sortType === 'dob') {
-          return new Date(a.dob) - new Date(b.dob) * modifier
-        }
-      })
-    }
-  },
-  methods: {
-    toggleSort(type) {
-      if (this.sortType === type) {
-        this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'
-      } else {
-        this.sortType = type
-        this.sortOrder = 'asc'
-      }
-    }
-  },
-  emits: ['edit-winner', 'confirm-delete']
+    return 0
+  })
+})
+
+const toggleSort = (type) => {
+  if (sortType.value === type) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortType.value = type
+    sortOrder.value = 'asc'
+  }
 }
 </script>
+
 <style scoped>
 .icons {
   position: relative;

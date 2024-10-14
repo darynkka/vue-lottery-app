@@ -20,99 +20,86 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted } from 'vue'
 import FormInput from './FormInput.vue'
 
-export default {
-  components: {
-    FormInput
+const props = defineProps({
+  initialData: {
+    type: Object,
+    default: null
   },
-  props: {
-    initialData: {
-      type: Object,
-      default: null
-    },
-    submitButtonText: {
-      type: String,
-      default: 'Save'
-    }
-  },
-  setup(props, { emit }) {
-    const name = ref('')
-    const dob = ref('')
-    const email = ref('')
-    const phone = ref('')
-    const errors = ref({})
+  submitButtonText: {
+    type: String,
+    default: 'Save'
+  }
+})
 
-    onMounted(() => {
-      if (props.initialData) {
-        name.value = props.initialData.name
-        dob.value = props.initialData.dob
-        email.value = props.initialData.email
-        phone.value = props.initialData.phone
-      }
-    })
+const emit = defineEmits(['add-winner'])
 
-    const validateEmail = (email) => {
-      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      return regex.test(email)
-    }
+const name = ref('')
+const dob = ref('')
+const email = ref('')
+const phone = ref('')
+const errors = ref({})
 
-    const validatePhone = (phone) => {
-      const regex = /^\+?[0-9]{10,15}$/
-      return regex.test(phone)
-    }
+onMounted(() => {
+  if (props.initialData) {
+    name.value = props.initialData.name
+    dob.value = props.initialData.dob
+    email.value = props.initialData.email
+    phone.value = props.initialData.phone
+  }
+})
 
-    const onSubmit = () => {
-      errors.value = {}
+const validateEmail = (email) => {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return regex.test(email)
+}
 
-      if (!name.value) {
-        errors.value.name = 'Name is required.'
-      }
-      if (!dob.value) {
-        errors.value.dob = 'Date of Birth is required.'
-      } else if (new Date(dob.value) > new Date()) {
-        errors.value.dob = 'Date of Birth cannot be in the future.'
-      }
-      if (!email.value) {
-        errors.value.email = 'Email is required.'
-      } else if (!validateEmail(email.value)) {
-        errors.value.email = 'Invalid email format.'
-      }
-      if (!phone.value) {
-        errors.value.phone = 'Phone number is required.'
-      } else if (!validatePhone(phone.value)) {
-        errors.value.phone = 'Invalid phone number format.'
-      }
+const validatePhone = (phone) => {
+  const regex = /^\+?[0-9]{10,15}$/
+  return regex.test(phone)
+}
 
-      if (Object.keys(errors.value).length > 0) {
-        return
-      }
+const onSubmit = () => {
+  errors.value = {}
 
-      emit('add-winner', {
-        name: name.value,
-        dob: dob.value,
-        email: email.value,
-        phone: phone.value
-      })
+  if (!name.value) {
+    errors.value.name = 'Name is required.'
+  }
+  if (!dob.value) {
+    errors.value.dob = 'Date of Birth is required.'
+  } else if (new Date(dob.value) > new Date()) {
+    errors.value.dob = 'Date of Birth cannot be in the future.'
+  }
+  if (!email.value) {
+    errors.value.email = 'Email is required.'
+  } else if (!validateEmail(email.value)) {
+    errors.value.email = 'Invalid email format.'
+  }
+  if (!phone.value) {
+    errors.value.phone = 'Phone number is required.'
+  } else if (!validatePhone(phone.value)) {
+    errors.value.phone = 'Invalid phone number format.'
+  }
 
-      if (!props.initialData) {
-        name.value = ''
-        dob.value = ''
-        email.value = ''
-        phone.value = ''
-      }
-    }
+  if (Object.keys(errors.value).length > 0) {
+    return
+  }
 
-    return {
-      name,
-      dob,
-      email,
-      phone,
-      errors,
-      onSubmit
-    }
+  emit('add-winner', {
+    name: name.value,
+    dob: dob.value,
+    email: email.value,
+    phone: phone.value
+  })
+
+  if (!props.initialData) {
+    name.value = ''
+    dob.value = ''
+    email.value = ''
+    phone.value = ''
   }
 }
 </script>

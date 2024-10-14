@@ -5,16 +5,15 @@
   </button>
 </template>
 
-<script>
-export default {
-  props: {
-    winner: {
-      type: Object,
-      required: true
-    }
-  },
-  emits: ['remove']
-}
+<script setup>
+defineProps({
+  winner: {
+    type: Object,
+    required: true
+  }
+})
+
+defineEmits(['remove'])
 </script>
 
 <style scoped>

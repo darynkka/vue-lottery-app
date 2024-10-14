@@ -14,36 +14,35 @@
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    id: {
-      type: String,
-      required: true
-    },
-    label: {
-      type: String,
-      required: true
-    },
-    modelValue: {
-      type: [String, Number],
-      default: ''
-    },
-    type: {
-      type: String,
-      default: 'text'
-    },
-    placeholder: {
-      type: String,
-      default: ''
-    },
-    error: {
-      type: String,
-      default: ''
-    }
+<script setup>
+defineProps({
+  id: {
+    type: String,
+    required: true
   },
-  emits: ['update:modelValue']
-}
+  label: {
+    type: String,
+    required: true
+  },
+  modelValue: {
+    type: [String, Number],
+    default: ''
+  },
+  type: {
+    type: String,
+    default: 'text'
+  },
+  placeholder: {
+    type: String,
+    default: ''
+  },
+  error: {
+    type: String,
+    default: ''
+  }
+})
+
+defineEmits(['update:modelValue'])
 </script>
 
 <style scoped>

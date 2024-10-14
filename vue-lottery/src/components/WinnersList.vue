@@ -11,21 +11,17 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import WinnerItem from './WinnerItem.vue'
 
-export default {
-  components: {
-    WinnerItem
-  },
-  props: {
-    winners: {
-      type: Array,
-      required: true
-    }
-  },
-  emits: ['remove-winner']
-}
+defineProps({
+  winners: {
+    type: Array,
+    required: true
+  }
+})
+
+defineEmits(['remove-winner'])
 </script>
 
 <style>

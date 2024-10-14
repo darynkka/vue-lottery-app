@@ -75,13 +75,13 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import WinnersTable from './components/WinnersTable.vue'
 import WinnerForm from './components/WinnerForm.vue'
 import WinnersList from './components/WinnersList.vue'
 import WinnerButton from './components/WinnerButton.vue'
 import SearchBar from './components/SearchBar.vue'
-import CustomModal from './components/Modal.vue'
+import CustomModal from './components/CustomModal.vue'
 
 export default {
   components: {
@@ -109,12 +109,22 @@ export default {
     })
     const errorMessage = ref('')
 
-    onMounted(() => {
+    const loadWinners = () => {
       const winnersData = localStorage.getItem('winners')
       if (winnersData) {
         winners.value = JSON.parse(winnersData)
       }
-    })
+    }
+
+    watch(
+      winners,
+      (newWinners) => {
+        localStorage.setItem('winners', JSON.stringify(newWinners))
+      },
+      { deep: true }
+    )
+
+    loadWinners()
 
     const onAddWinner = (winner) => {
       const emailExists = winners.value.some((w) => w.email === winner.email)
@@ -126,7 +136,6 @@ export default {
       }
 
       winners.value.push(winner)
-      localStorage.setItem('winners', JSON.stringify(winners.value))
       showSuccessModal.value = true
     }
 
@@ -144,7 +153,6 @@ export default {
       winners.value = winners.value.filter(
         (winner) => winner.email !== participantToDelete.value.email
       )
-      localStorage.setItem('winners', JSON.stringify(winners.value))
       showDeleteModal.value = false
     }
 
@@ -168,7 +176,6 @@ export default {
 
       if (index !== -1) {
         winners.value[index] = { ...editForm.value }
-        localStorage.setItem('winners', JSON.stringify(winners.value))
         closeEditModal()
       }
     }
@@ -228,6 +235,7 @@ export default {
   }
 }
 </script>
+
 <style>
 body {
   background-color: rgba(207, 207, 207, 0.2);
