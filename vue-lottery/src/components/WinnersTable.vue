@@ -6,11 +6,7 @@
           <th>#</th>
           <th>
             Name
-            <button
-              class="btn"
-              @click="toggleSort('name')"
-              style="background: transparent; border: none; width: 20px; height: 20px"
-            >
+            <button class="btn" @click="toggleSort('name')">
               <i
                 :class="sortOrder === 'asc' ? 'bi bi-sort-down' : 'bi bi-sort-up'"
                 class="icons"
@@ -19,11 +15,7 @@
           </th>
           <th>
             Date of Birth
-            <button
-              class="btn"
-              @click="toggleSort('dob')"
-              style="background: transparent; border: none; width: 20px; height: 20px"
-            >
+            <button class="btn" @click="toggleSort('dob')">
               <i
                 :class="sortOrder === 'asc' ? 'bi bi-sort-down' : 'bi bi-sort-up'"
                 class="icons"
@@ -36,19 +28,15 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(winner, index) in sortedWinners" :key="index">
+        <tr v-for="(winner, index) in winners" :key="winner.email">
           <td class="align-middle">{{ index + 1 }}</td>
           <td class="align-middle">{{ winner.name }}</td>
           <td class="align-middle">{{ winner.dob }}</td>
           <td class="align-middle">{{ winner.email }}</td>
           <td class="align-middle">{{ winner.phone }}</td>
           <td class="align-middle">
-            <button class="btn btn-sm btn-primary me-2" @click="$emit('edit-winner', winner)">
-              Edit
-            </button>
-            <button class="btn btn-sm btn-danger" @click="$emit('confirm-delete', winner)">
-              Delete
-            </button>
+            <button class="btn btn-sm btn-primary me-2" @click="editWinner(winner)">Edit</button>
+            <button class="btn btn-sm btn-danger" @click="confirmDelete(winner)">Delete</button>
           </td>
         </tr>
       </tbody>
@@ -57,35 +45,19 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 const props = defineProps({
   winners: {
     type: Array,
     required: true
-  },
-  searchTerm: {
-    type: String,
-    default: ''
   }
 })
 
-const emit = defineEmits(['edit-winner', 'confirm-delete'])
+const emit = defineEmits(['edit-winner', 'confirm-delete', 'sort-changed'])
 
-const sortType = ref('name')
 const sortOrder = ref('asc')
-
-const sortedWinners = computed(() => {
-  return [...props.winners].sort((a, b) => {
-    const modifier = sortOrder.value === 'asc' ? 1 : -1
-    if (sortType.value === 'name') {
-      return a.name.localeCompare(b.name) * modifier
-    } else if (sortType.value === 'dob') {
-      return (new Date(a.dob) - new Date(b.dob)) * modifier
-    }
-    return 0
-  })
-})
+const sortType = ref('name')
 
 const toggleSort = (type) => {
   if (sortType.value === type) {
@@ -94,13 +66,14 @@ const toggleSort = (type) => {
     sortType.value = type
     sortOrder.value = 'asc'
   }
+  emit('sort-changed', { type: sortType.value, order: sortOrder.value })
+}
+
+const editWinner = (winner) => {
+  emit('edit-winner', winner)
+}
+
+const confirmDelete = (winner) => {
+  emit('confirm-delete', winner)
 }
 </script>
-
-<style scoped>
-.icons {
-  position: relative;
-  bottom: 8px;
-  right: 7px;
-}
-</style>

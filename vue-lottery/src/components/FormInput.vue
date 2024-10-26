@@ -6,7 +6,7 @@
       :id="id"
       class="form-control custom-input"
       :value="modelValue"
-      @input="$emit('update:modelValue', $event.target.value)"
+      @input="handleInput"
       :placeholder="placeholder"
       :class="{ 'is-invalid': error }"
     />
@@ -15,34 +15,20 @@
 </template>
 
 <script setup>
-defineProps({
-  id: {
-    type: String,
-    required: true
-  },
-  label: {
-    type: String,
-    required: true
-  },
-  modelValue: {
-    type: [String, Number],
-    default: ''
-  },
-  type: {
-    type: String,
-    default: 'text'
-  },
-  placeholder: {
-    type: String,
-    default: ''
-  },
-  error: {
-    type: String,
-    default: ''
-  }
+const props = defineProps({
+  id: { type: String, required: true },
+  label: { type: String, required: true },
+  modelValue: { type: [String, Number], default: '' },
+  type: { type: String, default: 'text' },
+  placeholder: { type: String, default: '' },
+  error: { type: String, default: '' }
 })
 
-defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue'])
+
+const handleInput = (event) => {
+  emit('update:modelValue', event.target.value)
+}
 </script>
 
 <style scoped>

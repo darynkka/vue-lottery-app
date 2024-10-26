@@ -1,19 +1,17 @@
 <template>
   <button class="btn btn-primary d-flex align-items-center">
     {{ winner.name }}
-    <span class="ms-2 close-btn" @click.stop="$emit('remove')">&times;</span>
+    <span class="ms-2 close-btn" @click.stop="onRemove">&times;</span>
   </button>
 </template>
 
 <script setup>
-defineProps({
-  winner: {
-    type: Object,
-    required: true
-  }
-})
+const props = defineProps({ winner: { type: Object, required: true } })
+const emit = defineEmits(['remove'])
 
-defineEmits(['remove'])
+const onRemove = () => {
+  emit('remove', props.winner)
+}
 </script>
 
 <style scoped>

@@ -2,7 +2,7 @@
   <div class="card p-4 mb-4">
     <h5 class="card-title">{{ initialData ? 'EDIT FORM' : 'REGISTER FORM' }}</h5>
     <p class="text-muted">Please fill in all the fields.</p>
-    <form @submit.prevent="onSubmit" @keyup.enter="onSubmit">
+    <form @submit.prevent="onSubmit">
       <FormInput
         id="name"
         label="Name"
@@ -11,10 +11,19 @@
         :error="errors.name"
       />
       <FormInput id="dob" label="Date of Birth" v-model="dob" type="date" :error="errors.dob" />
-      <FormInput id="email" label="Email" v-model="email" type="email" :error="errors.email" />
+      <FormInput
+        id="email"
+        label="Email"
+        v-model="email"
+        type="email"
+        :error="errors.email"
+        :disabled="!!initialData"
+      />
       <FormInput id="phone" label="Phone number" v-model="phone" type="tel" :error="errors.phone" />
       <div class="text-end">
-        <button type="submit" class="btn btn-primary">{{ submitButtonText || 'Save' }}</button>
+        <button type="submit" class="btn btn-primary">
+          {{ submitButtonText || 'Save' }}
+        </button>
       </div>
     </form>
   </div>
@@ -23,19 +32,17 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import FormInput from './FormInput.vue'
+import Winner from '../Winner'
+import WinnerService from '../WinnerService'
 
 const props = defineProps({
-  initialData: {
-    type: Object,
-    default: null
-  },
-  submitButtonText: {
-    type: String,
-    default: 'Save'
-  }
+  initialData: { type: Object },
+  submitButtonText: { type: String, default: 'Save' }
 })
 
-const emit = defineEmits(['add-winner'])
+const emit = defineEmits(['winner-added', 'winner-updated'])
+
+const winnerService = new WinnerService()
 
 const name = ref('')
 const dob = ref('')
@@ -52,54 +59,46 @@ onMounted(() => {
   }
 })
 
-const validateEmail = (email) => {
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return regex.test(email)
-}
-
-const validatePhone = (phone) => {
-  const regex = /^\+?[0-9]{10,15}$/
-  return regex.test(phone)
-}
-
-const onSubmit = () => {
+const clearForm = () => {
+  name.value = ''
+  dob.value = ''
+  email.value = ''
+  phone.value = ''
   errors.value = {}
+}
 
-  if (!name.value) {
-    errors.value.name = 'Name is required.'
-  }
-  if (!dob.value) {
-    errors.value.dob = 'Date of Birth is required.'
-  } else if (new Date(dob.value) > new Date()) {
-    errors.value.dob = 'Date of Birth cannot be in the future.'
-  }
-  if (!email.value) {
-    errors.value.email = 'Email is required.'
-  } else if (!validateEmail(email.value)) {
-    errors.value.email = 'Invalid email format.'
-  }
-  if (!phone.value) {
-    errors.value.phone = 'Phone number is required.'
-  } else if (!validatePhone(phone.value)) {
-    errors.value.phone = 'Invalid phone number format.'
-  }
+const onSubmit = async () => {
+  try {
+    errors.value = {}
 
-  if (Object.keys(errors.value).length > 0) {
-    return
-  }
+    const winnerData = {
+      name: name.value,
+      dob: dob.value,
+      email: email.value.toLowerCase(), // Нормалізуємо email
+      phone: phone.value
+    }
 
-  emit('add-winner', {
-    name: name.value,
-    dob: dob.value,
-    email: email.value,
-    phone: phone.value
-  })
+    const winner = new Winner(winnerData.name, winnerData.dob, winnerData.email, winnerData.phone)
 
-  if (!props.initialData) {
-    name.value = ''
-    dob.value = ''
-    email.value = ''
-    phone.value = ''
+    if (props.initialData) {
+      const result = await winnerService.updateWinner(winner)
+      if (result.isValid) {
+        emit('winner-updated', winner)
+      } else {
+        errors.value = result.errors
+      }
+    } else {
+      const result = await winnerService.addWinner(winner)
+      if (result.isValid) {
+        emit('winner-added', winner)
+        clearForm()
+      } else {
+        errors.value = result.errors
+      }
+    }
+  } catch (error) {
+    console.error('Error in form submission:', error)
+    errors.value = { submit: error.message }
   }
 }
 </script>

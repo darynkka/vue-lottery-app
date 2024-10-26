@@ -2,243 +2,223 @@
   <div class="container my-4">
     <div class="bg-white mb-3">
       <div class="d-flex justify-content-between align-items-center p-3">
-        <WinnersList :winners="selectedWinners" @remove-winner="removeWinner" />
+        <WinnersList :winners="selectedWinners" @remove-winner="removeSelectedWinner" />
         <WinnerButton
           @select-winner="selectRandomWinner"
-          :disabled="winners.length === 0 || selectedWinners.length >= 3"
+          :disabled="!winners.length || selectedWinners.length >= 3"
         />
       </div>
     </div>
 
-    <WinnerForm @add-winner="onAddWinner" />
-    <SearchBar @filter-by-name="filterByName" />
+    <WinnerForm @winner-added="handleWinnerAdded" submitButtonText="Add Winner" />
+    <SearchBar @filter-by-name="filterWinners" />
+
     <WinnersTable
-      :winners="filteredWinners"
-      @confirm-delete="openDeleteConfirmation"
-      @edit-winner="openEditWinnerModal"
+      :winners="filteredAndSortedWinners"
+      @edit-winner="startEditingWinner"
+      @confirm-delete="confirmDeleteWinner"
+      @sort-changed="changeSort"
     />
 
-    <CustomModal v-if="showDeleteModal" @close="closeDeleteModal">
+    <CustomModal v-if="modals.edit.show" @close="closeEditModal">
+      <template #header>Edit Winner</template>
+      <template #body>
+        <WinnerForm
+          :initial-data="editingWinner"
+          submitButtonText="Update"
+          @winner-updated="handleWinnerUpdated"
+        />
+      </template>
+    </CustomModal>
+
+    <CustomModal v-if="modals.delete.show" @close="closeDeleteModal">
       <template #header>Confirm Deletion</template>
       <template #body>
-        <p>
-          Ви дійсно бажаєте видалити учасника {{ participantToDelete.name }} ({{
-            participantToDelete.email
-          }})?
+        <p v-if="winnerToDelete">
+          Are you sure you want to delete {{ winnerToDelete.name }} ({{ winnerToDelete.email }})?
         </p>
         <div class="d-flex justify-content-end">
-          <button class="btn btn-secondary me-2" @click="closeDeleteModal">Ні</button>
-          <button class="btn btn-danger" @click="deleteParticipant">Так</button>
+          <button class="btn btn-secondary me-2" @click="closeDeleteModal">No</button>
+          <button class="btn btn-danger" @click="deleteWinner">Yes</button>
         </div>
       </template>
     </CustomModal>
 
-    <CustomModal v-if="showEditModal" @close="closeEditModal">
-      <template #header>Edit Winner</template>
-      <template #body>
-        <form @submit.prevent="updateWinner">
-          <div class="mb-3">
-            <label for="name" class="form-label">Name</label>
-            <input type="text" class="form-control" v-model="editForm.name" id="name" required />
-          </div>
-          <div class="mb-3">
-            <label for="dob" class="form-label">Date of Birth</label>
-            <input type="date" class="form-control" v-model="editForm.dob" id="dob" required />
-          </div>
-          <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control" v-model="editForm.email" id="email" required />
-          </div>
-          <div class="mb-3">
-            <label for="phone" class="form-label">Phone number</label>
-            <input type="text" class="form-control" v-model="editForm.phone" id="phone" required />
-          </div>
-          <button type="submit" class="btn btn-primary">Оновити дані</button>
-        </form>
-      </template>
-    </CustomModal>
-
-    <CustomModal v-if="showSuccessModal" @close="showSuccessModal = false">
+    <CustomModal v-if="modals.success.show" @close="closeSuccessModal">
       <template #header>Success</template>
       <template #body>
-        <p>Winner added successfully!</p>
+        <p>{{ modals.success.message }}</p>
       </template>
     </CustomModal>
 
-    <CustomModal v-if="showErrorModal" @close="showErrorModal = false">
+    <CustomModal v-if="modals.error.show" @close="closeErrorModal">
       <template #header>Error</template>
       <template #body>
-        <p>{{ errorMessage }}</p>
+        <p>{{ modals.error.message }}</p>
       </template>
     </CustomModal>
   </div>
 </template>
 
-<script>
-import { ref, computed, watch } from 'vue'
-import WinnersTable from './components/WinnersTable.vue'
-import WinnerForm from './components/WinnerForm.vue'
-import WinnersList from './components/WinnersList.vue'
-import WinnerButton from './components/WinnerButton.vue'
-import SearchBar from './components/SearchBar.vue'
-import CustomModal from './components/CustomModal.vue'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import WinnersTable from '@/components/WinnersTable.vue'
+import WinnersList from '@/components/WinnersList.vue'
+import WinnerButton from '@/components/WinnerButton.vue'
+import SearchBar from '@/components/SearchBar.vue'
+import CustomModal from '@/components/CustomModal.vue'
+import WinnerForm from '@/components/WinnerForm.vue'
+import WinnerService from './WinnerService'
+import type Winner from './Winner'
 
-export default {
-  components: {
-    WinnersTable,
-    WinnerForm,
-    WinnersList,
-    WinnerButton,
-    SearchBar,
-    CustomModal
-  },
-  setup() {
-    const winners = ref([])
-    const selectedWinners = ref([])
-    const searchTerm = ref('')
-    const showSuccessModal = ref(false)
-    const showErrorModal = ref(false)
-    const showDeleteModal = ref(false)
-    const showEditModal = ref(false)
-    const participantToDelete = ref(null)
-    const editForm = ref({
-      name: '',
-      dob: '',
-      email: '',
-      phone: ''
-    })
-    const errorMessage = ref('')
+const winnerService = new WinnerService()
 
-    const loadWinners = () => {
-      const winnersData = localStorage.getItem('winners')
-      if (winnersData) {
-        winners.value = JSON.parse(winnersData)
-      }
+const winners = ref<Winner[]>([])
+const selectedWinners = ref<Winner[]>([])
+const searchTerm = ref('')
+const sortConfig = ref({ type: 'name', order: 'asc' })
+const editingWinner = ref<Winner | undefined>(undefined)
+const winnerToDelete = ref<Winner | null>(null)
+
+const modals = ref({
+  delete: { show: false },
+  success: { show: false, message: '' },
+  error: { show: false, message: '' },
+  edit: { show: false }
+})
+
+const loadWinners = async () => {
+  winners.value = await winnerService.getAllWinners()
+}
+
+const filteredAndSortedWinners = computed(() => {
+  const filtered = winners.value.filter((winner) => {
+    return winner.name.toLowerCase().includes(searchTerm.value.toLowerCase())
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
+    const modifier = sortConfig.value.order === 'asc' ? 1 : -1
+    if (sortConfig.value.type === 'name') {
+      return a.name.localeCompare(b.name) * modifier
+    } else {
+      return (new Date(a.dob).getTime() - new Date(b.dob).getTime()) * modifier
     }
+  })
 
-    watch(
-      winners,
-      (newWinners) => {
-        localStorage.setItem('winners', JSON.stringify(newWinners))
-      },
-      { deep: true }
-    )
+  return sorted
+})
 
-    loadWinners()
+const showSuccessModal = (message: string) => {
+  modals.value.success.message = message
+  modals.value.success.show = true
+  // Додаємо таймер для автоматичного закриття
+  setTimeout(() => {
+    closeSuccessModal()
+  }, 2000)
+}
 
-    const onAddWinner = (winner) => {
-      const emailExists = winners.value.some((w) => w.email === winner.email)
+const showErrorModal = (message: string) => {
+  modals.value.error.message = message
+  modals.value.error.show = true
+  // Додаємо таймер для автоматичного закриття
+  setTimeout(() => {
+    closeErrorModal()
+  }, 3000)
+}
 
-      if (emailExists) {
-        errorMessage.value = 'A winner with this email already exists.'
-        showErrorModal.value = true
-        return
-      }
+const closeEditModal = () => {
+  modals.value.edit.show = false
+  editingWinner.value = undefined
+}
 
-      winners.value.push(winner)
-      showSuccessModal.value = true
+const closeDeleteModal = () => {
+  modals.value.delete.show = false
+  winnerToDelete.value = null
+}
+
+const closeSuccessModal = () => {
+  modals.value.success.show = false
+}
+
+const closeErrorModal = () => {
+  modals.value.error.show = false
+}
+
+const handleWinnerAdded = async (winner: Winner) => {
+  try {
+    const result = await winnerService.addWinner(winner)
+    if (result.isValid) {
+      await loadWinners()
+      showSuccessModal('Winner added successfully!')
+    } else {
+      showErrorModal(Object.values(result.errors)[0])
     }
+  } catch (error) {
+    showErrorModal(error instanceof Error ? error.message : 'Failed to add winner')
+  }
+}
 
-    const openDeleteConfirmation = (winner) => {
-      participantToDelete.value = winner
-      showDeleteModal.value = true
+const handleWinnerUpdated = async (winner: Winner) => {
+  try {
+    const result = await winnerService.updateWinner(winner)
+    if (result.isValid) {
+      await loadWinners()
+      closeEditModal()
+      showSuccessModal('Winner updated successfully!')
+    } else {
+      showErrorModal(Object.values(result.errors)[0])
     }
+  } catch (error) {
+    showErrorModal(error instanceof Error ? error.message : 'Failed to update winner')
+  }
+}
 
-    const closeDeleteModal = () => {
-      showDeleteModal.value = false
-      participantToDelete.value = null
-    }
+const selectRandomWinner = async () => {
+  if (winners.value.length === 0 || selectedWinners.value.length >= 3) return
+  const excludeEmails = selectedWinners.value.map((w) => w.email)
+  const newWinners = await winnerService.selectRandomWinners(1, excludeEmails)
+  if (newWinners.length > 0) {
+    selectedWinners.value.push(newWinners[0])
+  }
+}
 
-    const deleteParticipant = () => {
-      winners.value = winners.value.filter(
-        (winner) => winner.email !== participantToDelete.value.email
-      )
-      showDeleteModal.value = false
-    }
+const removeSelectedWinner = async (index: number) => {
+  selectedWinners.value.splice(index, 1)
+  await loadWinners()
+}
 
-    const openEditWinnerModal = (winner) => {
-      editForm.value = { ...winner }
-      showEditModal.value = true
-    }
+const startEditingWinner = (winner: Winner) => {
+  editingWinner.value = { ...winner }
+  modals.value.edit.show = true
+}
 
-    const closeEditModal = () => {
-      showEditModal.value = false
-      editForm.value = {
-        name: '',
-        dob: '',
-        email: '',
-        phone: ''
-      }
-    }
+const confirmDeleteWinner = (winner: Winner) => {
+  winnerToDelete.value = winner
+  modals.value.delete.show = true
+}
 
-    const updateWinner = () => {
-      const index = winners.value.findIndex((w) => w.email === editForm.value.email)
-
-      if (index !== -1) {
-        winners.value[index] = { ...editForm.value }
-        closeEditModal()
-      }
-    }
-
-    const selectRandomWinner = () => {
-      if (winners.value.length === 0 || selectedWinners.value.length >= 3) return
-
-      const availableWinners = winners.value.filter(
-        (winner) => !selectedWinners.value.find((w) => w.email === winner.email)
-      )
-
-      if (availableWinners.length > 0) {
-        const randomIndex = Math.floor(Math.random() * availableWinners.length)
-        selectedWinners.value.push(availableWinners[randomIndex])
-      }
-    }
-
-    const removeWinner = (index) => {
-      selectedWinners.value.splice(index, 1)
-    }
-
-    const filterByName = (name) => {
-      searchTerm.value = name
-    }
-
-    const filteredWinners = computed(() => {
-      if (!searchTerm.value) {
-        return winners.value
-      }
-      const search = searchTerm.value.toLowerCase()
-      return winners.value.filter((winner) => winner.name.toLowerCase().includes(search))
-    })
-
-    return {
-      winners,
-      selectedWinners,
-      onAddWinner,
-      showSuccessModal,
-      showErrorModal,
-      showDeleteModal,
-      showEditModal,
-      editForm,
-      participantToDelete,
-      errorMessage,
-      selectRandomWinner,
-      removeWinner,
-      openDeleteConfirmation,
-      closeDeleteModal,
-      deleteParticipant,
-      openEditWinnerModal,
-      closeEditModal,
-      updateWinner,
-      filterByName,
-      searchTerm,
-      filteredWinners
+const deleteWinner = async () => {
+  if (winnerToDelete.value) {
+    try {
+      await winnerService.deleteWinner(winnerToDelete.value.email)
+      await loadWinners() // Перезавантажуємо список після успішного видалення
+      closeDeleteModal()
+      showSuccessModal('Winner deleted successfully!')
+    } catch (error) {
+      showErrorModal(error instanceof Error ? error.message : 'Failed to delete winner')
     }
   }
 }
-</script>
 
-<style>
-body {
-  background-color: rgba(207, 207, 207, 0.2);
-  box-sizing: border-box;
+const filterWinners = (term: string) => {
+  searchTerm.value = term
 }
-</style>
+
+const changeSort = ({ type, order }: { type: 'name' | 'dob'; order: 'asc' | 'desc' }) => {
+  sortConfig.value = { type, order }
+}
+
+onMounted(() => {
+  loadWinners()
+})
+</script>

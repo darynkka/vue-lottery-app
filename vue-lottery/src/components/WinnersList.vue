@@ -5,7 +5,7 @@
         v-for="(winner, index) in winners"
         :key="index"
         :winner="winner"
-        @remove="$emit('remove-winner', index)"
+        @remove="removeWinner(index)"
       />
     </div>
   </div>
@@ -14,21 +14,14 @@
 <script setup>
 import WinnerItem from './WinnerItem.vue'
 
-defineProps({
-  winners: {
-    type: Array,
-    required: true
-  }
-})
+const props = defineProps({ winners: { type: Array, required: true } })
+const emit = defineEmits(['remove-winner'])
 
-defineEmits(['remove-winner'])
+const removeWinner = (index) => {
+  emit('remove-winner', index)
+}
 </script>
 
-<style>
-body {
-  background: rgba(207, 207, 207, 0.2);
-}
-</style>
 <style scoped>
 .winners-box {
   border: 1px solid gray;

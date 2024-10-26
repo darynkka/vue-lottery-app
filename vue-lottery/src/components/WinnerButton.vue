@@ -1,16 +1,19 @@
 <template>
-  <button class="btn btn-primary" @click="$emit('select-winner')" :disabled="disabled">
+  <button class="btn btn-primary" @click="handleSelectWinner" :disabled="disabled">
     New winner
   </button>
 </template>
 
 <script setup>
-defineProps({
-  disabled: {
-    type: Boolean,
-    default: false
-  }
+import { defineProps, defineEmits } from 'vue'
+
+const props = defineProps({
+  disabled: Boolean
 })
 
-defineEmits(['select-winner'])
+const emit = defineEmits(['select-winner'])
+
+function handleSelectWinner() {
+  emit('select-winner')
+}
 </script>

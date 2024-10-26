@@ -1,16 +1,23 @@
 <template>
   <div class="mb-3">
-    <input type="text" class="form-control" placeholder="Search by name..." v-model="searchTerm" />
+    <input
+      type="text"
+      class="form-control"
+      placeholder="Search by name..."
+      v-model="searchTerm"
+      @input="emitSearch"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
+import { defineEmits } from 'vue'
 
 const emit = defineEmits(['filter-by-name'])
 const searchTerm = ref('')
 
-watch(searchTerm, (newValue) => {
-  emit('filter-by-name', newValue)
-})
+function emitSearch() {
+  emit('filter-by-name', searchTerm.value)
+}
 </script>
