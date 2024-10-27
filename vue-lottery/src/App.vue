@@ -68,17 +68,16 @@ import WinnerButton from '@/components/WinnerButton.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import CustomModal from '@/components/CustomModal.vue'
 import WinnerForm from '@/components/WinnerForm.vue'
-import WinnerService from './WinnerService'
-import type Winner from './Winner'
+import WinnerRepository, { IWinner } from './WinnerRepository'
 
-const winnerService = new WinnerService()
+const winnerRepo = new WinnerRepository()
 
-const winners = ref<Winner[]>([])
-const selectedWinners = ref<Winner[]>([])
+const winners = ref<IWinner[]>([])
+const selectedWinners = ref<IWinner[]>([])
 const searchTerm = ref('')
 const sortConfig = ref({ type: 'name', order: 'asc' })
-const editingWinner = ref<Winner | undefined>(undefined)
-const winnerToDelete = ref<Winner | null>(null)
+const editingWinner = ref<IWinner | undefined>(undefined)
+const winnerToDelete = ref<IWinner | null>(null)
 
 const modals = ref({
   delete: { show: false },
@@ -87,43 +86,25 @@ const modals = ref({
   edit: { show: false }
 })
 
-const loadWinners = async () => {
-  winners.value = await winnerService.getAllWinners()
+const loadWinners = () => {
+  winners.value = winnerRepo.getAllWinners()
 }
 
 const filteredAndSortedWinners = computed(() => {
-  const filtered = winners.value.filter((winner) => {
-    return winner.name.toLowerCase().includes(searchTerm.value.toLowerCase())
-  })
-
-  const sorted = [...filtered].sort((a, b) => {
-    const modifier = sortConfig.value.order === 'asc' ? 1 : -1
-    if (sortConfig.value.type === 'name') {
-      return a.name.localeCompare(b.name) * modifier
-    } else {
-      return (new Date(a.dob).getTime() - new Date(b.dob).getTime()) * modifier
-    }
-  })
-
-  return sorted
+  const filtered = searchTerm.value ? winnerRepo.searchByName(searchTerm.value) : winners.value
+  return winnerRepo.sortWinners(filtered, sortConfig.value.type, sortConfig.value.order)
 })
 
 const showSuccessModal = (message: string) => {
   modals.value.success.message = message
   modals.value.success.show = true
-  // Додаємо таймер для автоматичного закриття
-  setTimeout(() => {
-    closeSuccessModal()
-  }, 2000)
+  setTimeout(closeSuccessModal, 2000)
 }
 
 const showErrorModal = (message: string) => {
   modals.value.error.message = message
   modals.value.error.show = true
-  // Додаємо таймер для автоматичного закриття
-  setTimeout(() => {
-    closeErrorModal()
-  }, 3000)
+  setTimeout(closeErrorModal, 3000)
 }
 
 const closeEditModal = () => {
@@ -144,68 +125,69 @@ const closeErrorModal = () => {
   modals.value.error.show = false
 }
 
-const handleWinnerAdded = async (winner: Winner) => {
-  try {
-    const result = await winnerService.addWinner(winner)
-    if (result.isValid) {
-      await loadWinners()
-      showSuccessModal('Winner added successfully!')
-    } else {
-      showErrorModal(Object.values(result.errors)[0])
-    }
-  } catch (error) {
-    showErrorModal(error instanceof Error ? error.message : 'Failed to add winner')
+const handleWinnerAdded = (winner: IWinner) => {
+  const result = winnerRepo.addWinner(winner)
+
+  if (result.success) {
+    loadWinners()
+    showSuccessModal('Winner added successfully!')
+  } else {
+    const errorMessages = Object.values(result.errors || {}).join(', ')
+    showErrorModal(errorMessages)
+    return false
+  }
+  return true
+}
+
+const handleWinnerUpdated = (winner: IWinner) => {
+  const result = winnerRepo.updateWinner(winner)
+
+  if (result.success) {
+    loadWinners()
+    closeEditModal()
+    showSuccessModal('Winner updated successfully!')
+  } else {
+    const errorMessages = Object.values(result.errors || {}).join(', ')
+    showErrorModal(errorMessages)
   }
 }
 
-const handleWinnerUpdated = async (winner: Winner) => {
-  try {
-    const result = await winnerService.updateWinner(winner)
-    if (result.isValid) {
-      await loadWinners()
-      closeEditModal()
-      showSuccessModal('Winner updated successfully!')
-    } else {
-      showErrorModal(Object.values(result.errors)[0])
-    }
-  } catch (error) {
-    showErrorModal(error instanceof Error ? error.message : 'Failed to update winner')
-  }
-}
-
-const selectRandomWinner = async () => {
+const selectRandomWinner = () => {
   if (winners.value.length === 0 || selectedWinners.value.length >= 3) return
+
   const excludeEmails = selectedWinners.value.map((w) => w.email)
-  const newWinners = await winnerService.selectRandomWinners(1, excludeEmails)
+  const newWinners = winnerRepo.getRandomWinners(1, excludeEmails)
+
   if (newWinners.length > 0) {
     selectedWinners.value.push(newWinners[0])
   }
 }
 
-const removeSelectedWinner = async (index: number) => {
+const removeSelectedWinner = (index: number) => {
   selectedWinners.value.splice(index, 1)
-  await loadWinners()
+  loadWinners()
 }
 
-const startEditingWinner = (winner: Winner) => {
+const startEditingWinner = (winner: IWinner) => {
   editingWinner.value = { ...winner }
   modals.value.edit.show = true
 }
 
-const confirmDeleteWinner = (winner: Winner) => {
+const confirmDeleteWinner = (winner: IWinner) => {
   winnerToDelete.value = winner
   modals.value.delete.show = true
 }
 
-const deleteWinner = async () => {
+const deleteWinner = () => {
   if (winnerToDelete.value) {
-    try {
-      await winnerService.deleteWinner(winnerToDelete.value.email)
-      await loadWinners() // Перезавантажуємо список після успішного видалення
+    const result = winnerRepo.deleteWinner(winnerToDelete.value.email)
+
+    if (result.success) {
+      loadWinners()
       closeDeleteModal()
       showSuccessModal('Winner deleted successfully!')
-    } catch (error) {
-      showErrorModal(error instanceof Error ? error.message : 'Failed to delete winner')
+    } else {
+      showErrorModal(result.error || 'Failed to delete winner')
     }
   }
 }
@@ -214,11 +196,9 @@ const filterWinners = (term: string) => {
   searchTerm.value = term
 }
 
-const changeSort = ({ type, order }: { type: 'name' | 'dob'; order: 'asc' | 'desc' }) => {
+const changeSort = ({ type, order }: { type: string; order: string }) => {
   sortConfig.value = { type, order }
 }
 
-onMounted(() => {
-  loadWinners()
-})
+onMounted(loadWinners)
 </script>
