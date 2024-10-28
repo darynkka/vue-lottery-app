@@ -30,11 +30,6 @@ class WinnerRepository {
     }
   }
 
-  private getNextId(): number {
-    const winners = this.getAllWinners()
-    return winners.length > 0 ? Math.max(...winners.map((w) => w.id)) + 1 : 1
-  }
-
   public findByEmail(email: string): IWinner | null {
     if (!email?.trim()) return null
     const normalizedEmail = email.toLowerCase().trim()
@@ -76,25 +71,15 @@ class WinnerRepository {
 
   public async addWinner(winnerData: IWinner): Promise<{
     success: boolean
-    errors?: Record<string, string>
-    validationErrors?: Record<string, string>
+    error?: string
   }> {
-    if (!winnerData) {
-      return { success: false, validationErrors: { general: 'Invalid winner data.' } }
-    }
-
-    const validation = this.validateWinner(winnerData)
-    if (!validation.isValid) {
-      return { success: false, validationErrors: validation.errors }
-    }
-
     const normalizedEmail = winnerData.email.toLowerCase().trim()
     const existingWinner = this.findByEmail(normalizedEmail)
 
     if (existingWinner) {
       return {
         success: false,
-        validationErrors: { email: 'A winner with this email already exists' }
+        error: 'A winner with this email already exists'
       }
     }
 
@@ -118,12 +103,11 @@ class WinnerRepository {
         const errorData = await response.json()
         return {
           success: false,
-          errors: { general: errorData.message || 'Failed to create winner on the server.' }
+          error: errorData.message || 'Failed to create winner on the server.'
         }
       }
 
       const newWinner = await response.json()
-
       const winners = this.getAllWinners()
       winners.push({
         id: newWinner.id,
@@ -139,25 +123,15 @@ class WinnerRepository {
       console.error('Failed to save winner:', error)
       return {
         success: false,
-        errors: { general: 'Failed to save winner. Please check your connection and try again.' }
+        error: 'Failed to save winner. Please check your connection and try again.'
       }
     }
   }
 
   public async updateWinner(winner: IWinner): Promise<{
     success: boolean
-    errors?: Record<string, string>
-    validationErrors?: Record<string, string>
+    error?: string
   }> {
-    if (!winner) {
-      return { success: false, validationErrors: { general: 'Invalid winner data.' } }
-    }
-
-    const validation = this.validateWinner(winner)
-    if (!validation.isValid) {
-      return { success: false, validationErrors: validation.errors }
-    }
-
     try {
       const normalizedEmail = winner.email.toLowerCase().trim()
       const existingWinner = this.findByEmail(normalizedEmail)
@@ -165,7 +139,7 @@ class WinnerRepository {
       if (!existingWinner) {
         return {
           success: false,
-          validationErrors: { email: 'Winner not found' }
+          error: 'Winner not found'
         }
       }
 
@@ -186,13 +160,12 @@ class WinnerRepository {
         const errorData = await response.json()
         return {
           success: false,
-          errors: { general: errorData.message || 'Failed to update winner on the server.' }
+          error: errorData.message || 'Failed to update winner on the server.'
         }
       }
 
       const updatedWinner = await response.json()
 
-      // Update the userAuthenticated ref
       const winners = this.getAllWinners()
       const index = winners.findIndex((w) => w.id === winner.id)
       if (index !== -1) {
@@ -204,6 +177,7 @@ class WinnerRepository {
           role: updatedWinner.role
         }
         this.userAuthenticated.value = [...winners]
+        localStorage.setItem(this.storageKey, JSON.stringify(winners))
       }
 
       return { success: true }
@@ -211,7 +185,7 @@ class WinnerRepository {
       console.error('Failed to update winner:', error)
       return {
         success: false,
-        errors: { general: 'Failed to update winner. Please check your connection and try again.' }
+        error: 'Failed to update winner. Please check your connection and try again.'
       }
     }
   }

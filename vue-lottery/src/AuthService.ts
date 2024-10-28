@@ -1,6 +1,4 @@
-import axios from 'axios'
 import { ref } from 'vue'
-import AppNavigation from './components/AppNavigation.vue'
 
 export interface AuthResponse {
   success: boolean

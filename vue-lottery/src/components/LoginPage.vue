@@ -65,8 +65,7 @@ const handleSubmit = async () => {
     if (!result.success) {
       errors.value.password = result.error ?? 'An error occurred. Please try again.'
     } else {
-      showModal.value = true // Show the modal
-      // No need to set authService.userAuthenticated.value = true; it's already handled in AuthService
+      showModal.value = true
     }
 
     isSubmitting.value = false

@@ -2,117 +2,132 @@
   <div class="card p-4 mb-4">
     <h5 class="card-title">{{ initialData ? 'EDIT FORM' : 'REGISTER FORM' }}</h5>
     <p class="text-muted">Please fill in all the fields.</p>
-    <form @submit.prevent="onSubmit" :class="{ submitting: isSubmitting }">
-      <FormInput
-        id="name"
-        label="Name"
-        v-model="name"
-        placeholder="Enter user name"
-        :error="errors.name"
-        :disabled="isSubmitting"
-      />
-      <FormInput
-        id="email"
-        label="Email"
-        v-model="email"
-        placeholder="Enter user email"
-        type="email"
-        :error="errors.email"
-        :disabled="!!initialData || isSubmitting"
-      />
-      <FormInput
-        id="role"
-        label="Role"
-        v-model="role"
-        placeholder="Enter user role"
-        type="role"
-        :error="errors.role"
-        :disabled="!!initialData || isSubmitting"
-      />
-      <FormInput
-        id="password"
-        label="Password"
-        v-model="password"
-        placeholder="Enter user password"
-        type="password"
-        :error="errors.password"
-        :disabled="!!initialData || isSubmitting"
-      />
+
+    <Form
+      @submit="onSubmit"
+      :validation-schema="schema"
+      :initial-values="initialValues"
+      v-slot="{ isSubmitting }"
+    >
+      <Field name="name" v-slot="{ field, errors }">
+        <FormInput
+          id="name"
+          label="Name"
+          v-bind="field"
+          placeholder="Enter user name"
+          :error="errors[0]"
+          :disabled="isSubmitting"
+        />
+      </Field>
+
+      <Field name="email" v-slot="{ field, errors }">
+        <FormInput
+          id="email"
+          label="Email"
+          v-bind="field"
+          placeholder="Enter user email"
+          type="email"
+          :error="errors[0]"
+          :disabled="isSubmitting"
+        />
+      </Field>
+
+      <Field name="role" v-slot="{ field, errors }">
+        <FormInput
+          id="role"
+          label="Role"
+          v-bind="field"
+          placeholder="Enter user role"
+          :error="errors[0]"
+          :disabled="isSubmitting"
+        />
+      </Field>
+
+      <Field name="password" v-slot="{ field, errors }">
+        <FormInput
+          id="password"
+          label="Password"
+          v-bind="field"
+          placeholder="Enter user password"
+          type="password"
+          :error="errors[0]"
+          :disabled="isSubmitting"
+        />
+      </Field>
+
       <div class="text-end">
         <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
           {{ isSubmitting ? 'Saving...' : submitButtonText || 'Save' }}
         </button>
       </div>
-    </form>
+    </Form>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, PropType } from 'vue'
+import { computed } from 'vue'
+import { Form, Field } from 'vee-validate'
+import * as yup from 'yup'
 import FormInput from './FormInput.vue'
 import type { IWinner } from '@/WinnerRepository'
 
-const props = defineProps({
-  initialData: { type: Object as PropType<IWinner> },
-  submitButtonText: { type: String, default: 'Save' }
+const props = defineProps<{
+  initialData?: IWinner
+  submitButtonText?: string
+}>()
+
+const emit = defineEmits<{
+  (e: 'winner-added', winner: IWinner): void
+  (e: 'winner-updated', winner: IWinner): void
+}>()
+
+const schema = yup.object().shape({
+  name: yup
+    .string()
+    .required('Name is required')
+    .min(2, 'Name must be at least 2 characters')
+    .trim(),
+
+  email: yup.string().required('Email is required').email('Invalid email format').trim(),
+
+  role: yup
+    .string()
+    .required('Role is required')
+    .min(2, 'Role must be at least 2 characters')
+    .trim(),
+
+  password: yup
+    .string()
+    .required('Password is required')
+    .min(6, 'Password must be at least 6 characters')
+    .trim()
 })
 
-const emit = defineEmits(['winner-added', 'winner-updated'])
+const initialValues = computed(() => ({
+  name: props.initialData?.name || '',
+  email: props.initialData?.email || '',
+  role: props.initialData?.role || '',
+  password: props.initialData?.password || ''
+}))
 
-const name = ref<string>('')
-const email = ref<string>('')
-const password = ref<string>('')
-const role = ref<string>('')
-const errors = ref<Record<string, string>>({})
-const isSubmitting = ref(false)
-
-onMounted(() => {
-  if (props.initialData) {
-    name.value = props.initialData.name
-    email.value = props.initialData.email
-    password.value = props.initialData.password
-    role.value = props.initialData.role
-  }
-})
-
-const clearForm = () => {
-  name.value = ''
-  email.value = ''
-  password.value = ''
-  role.value = ''
-  errors.value = {}
-}
-
-const onSubmit = async () => {
-  if (isSubmitting.value) return
-
+const onSubmit = async (values: Record<string, string>) => {
   try {
-    isSubmitting.value = true
-    errors.value = {}
-
     const winnerData: IWinner = {
       id: props.initialData?.id || 0,
-      name: name.value,
-      email: email.value.toLowerCase(),
-      password: password.value,
-      role: role.value
+      name: values.name,
+      email: values.email.toLowerCase(),
+      password: values.password,
+      role: values.role
     }
 
     if (props.initialData) {
       emit('winner-updated', winnerData)
     } else {
       emit('winner-added', winnerData)
-      clearForm()
     }
   } catch (error) {
     console.error('Error in form submission:', error)
-    if (error instanceof Error) {
-      errors.value = { submit: error.message }
-    } else {
-      errors.value = { submit: 'An unknown error occurred.' }
-    }
-  } finally {
-    isSubmitting.value = false
+    throw error
   }
 }
 </script>
