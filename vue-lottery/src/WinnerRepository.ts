@@ -1,39 +1,41 @@
 export interface IWinner {
+  id: number
   name: string
-  dob: string
   email: string
-  phone: string
+  password: string
+  role: string
 }
 
 class WinnerRepository {
-  private storageKey = 'winners'
+  public storageKey = 'winners'
 
   private validateEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   }
 
-  private validatePhone(phone: string): boolean {
-    return /^\+?[0-9]{7,15}$/.test(phone)
+  private validatePassword(password: string): boolean {
+    return password && password.length >= 6 ? true : false
   }
 
-  private validateWinner(winner: IWinner): { isValid: boolean; errors?: Record<string, string> } {
+  private validateWinner(winner: Partial<IWinner>): {
+    isValid: boolean
+    errors?: Record<string, string>
+  } {
     const errors: Record<string, string> = {}
 
     if (!winner.name?.trim()) errors.name = 'Name is required.'
-    if (!winner.dob) {
-      errors.dob = 'Date of Birth is required.'
-    } else if (new Date(winner.dob) > new Date()) {
-      errors.dob = 'Date of Birth cannot be in the future.'
-    }
     if (!winner.email?.trim()) {
       errors.email = 'Email is required.'
     } else if (!this.validateEmail(winner.email)) {
       errors.email = 'Invalid email format.'
     }
-    if (!winner.phone?.trim()) {
-      errors.phone = 'Phone number is required.'
-    } else if (!this.validatePhone(winner.phone)) {
-      errors.phone = 'Invalid phone number format.'
+    if (!winner.password?.trim()) {
+      errors.password = 'Password is required.'
+    } else if (!this.validatePassword(winner.password)) {
+      errors.password = 'Password must be at least 6 characters long.'
+    }
+    if (!winner.role?.trim()) {
+      errors.role = 'Role is required.'
     }
 
     return {
@@ -51,9 +53,14 @@ class WinnerRepository {
       const data = localStorage.getItem(this.storageKey)
       return data ? JSON.parse(data) : []
     } catch {
-      this.clearStorage()
+      localStorage.removeItem(this.storageKey)
       return []
     }
+  }
+
+  private getNextId(): number {
+    const winners = this.getAllWinners()
+    return winners.length > 0 ? Math.max(...winners.map((w) => w.id)) + 1 : 1
   }
 
   public findByEmail(email: string): IWinner | null {
@@ -63,17 +70,17 @@ class WinnerRepository {
     return winners.find((w) => w.email.toLowerCase().trim() === normalizedEmail) || null
   }
 
-  public addWinner(winner: IWinner): { success: boolean; errors?: Record<string, string> } {
-    if (!winner) {
+  public addWinner(winnerData: IWinner): { success: boolean; errors?: Record<string, string> } {
+    if (!winnerData) {
       return { success: false, errors: { general: 'Invalid winner data.' } }
     }
 
-    const validation = this.validateWinner(winner)
+    const validation = this.validateWinner(winnerData)
     if (!validation.isValid) {
       return { success: false, errors: validation.errors }
     }
 
-    const normalizedEmail = winner.email.toLowerCase().trim()
+    const normalizedEmail = winnerData.email.toLowerCase().trim()
     const existingWinner = this.findByEmail(normalizedEmail)
 
     if (existingWinner) {
@@ -86,10 +93,10 @@ class WinnerRepository {
     try {
       const winners = this.getAllWinners()
       const newWinner = {
-        ...winner,
+        ...winnerData,
+        id: this.getNextId(), // Додаємо генерацію ID
         email: normalizedEmail,
-        name: winner.name.trim(),
-        phone: winner.phone.trim()
+        name: winnerData.name.trim()
       }
 
       winners.push(newWinner)
@@ -126,8 +133,7 @@ class WinnerRepository {
       winners[index] = {
         ...winner,
         email: normalizedEmail,
-        name: winner.name.trim(),
-        phone: winner.phone.trim()
+        name: winner.name.trim()
       }
 
       localStorage.setItem(this.storageKey, JSON.stringify(winners))
@@ -199,11 +205,36 @@ class WinnerRepository {
     return [...winners].sort((a, b) => {
       if (sortBy === 'name') {
         return (a.name || '').localeCompare(b.name || '') * factor
-      } else if (sortBy === 'dob') {
-        return (a.dob || '').localeCompare(b.dob || '') * factor
       }
       return 0
     })
+  }
+
+  public fetchUsers(): void {
+    fetch('https://api.escuelajs.co/api/v1/users')
+      .then((response) => response.json())
+      .then((data) => {
+        const winners = data.map(
+          (winner: {
+            id: number
+            name: string
+            email: string
+            password: string
+            role: string
+          }) => ({
+            id: winner.id,
+            name: winner.name,
+            email: winner.email,
+            password: winner.password,
+            role: winner.role
+          })
+        )
+
+        localStorage.setItem(this.storageKey, JSON.stringify(winners))
+      })
+      .catch((error) => {
+        console.error('Failed to fetch users:', error)
+      })
   }
 }
 
