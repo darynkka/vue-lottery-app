@@ -13,13 +13,48 @@
           <li class="nav-item">
             <router-link class="nav-link" to="/lottery">Lottery</router-link>
           </li>
-          <li class="nav-item">
-            <router-link class="nav-link" to="/login">Login</router-link>
-          </li>
+          <template v-if="isAuthenticated">
+            <li class="nav-item">
+              <button @click="handleLogout" class="nav-link btn btn-link text-bg-danger">
+                Logout
+              </button>
+            </li>
+          </template>
+          <template v-else>
+            <li class="nav-item">
+              <router-link class="nav-link" to="/login">Login</router-link>
+            </li>
+          </template>
         </ul>
       </div>
     </div>
   </nav>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { authService } from '@/AuthService'
+import { useRouter } from 'vue-router'
+
+const isAuthenticated = ref(authService.isAuthenticated())
+
+watch(
+  () => authService.userAuthenticated.value,
+  (newValue) => {
+    isAuthenticated.value = newValue
+  }
+)
+
+const router = useRouter()
+
+const handleLogout = () => {
+  authService.logout()
+  router.push('/login')
+}
+</script>
+
+<style scoped>
+.nav-link {
+  cursor: pointer;
+}
+</style>

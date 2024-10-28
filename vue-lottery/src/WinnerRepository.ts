@@ -1,3 +1,5 @@
+import { ref } from 'vue'
+
 export interface IWinner {
   id: number
   name: string
@@ -8,6 +10,7 @@ export interface IWinner {
 
 class WinnerRepository {
   public storageKey = 'winners'
+  public userAuthenticated = ref<IWinner[]>([])
 
   private validateEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -15,37 +18,6 @@ class WinnerRepository {
 
   private validatePassword(password: string): boolean {
     return password && password.length >= 6 ? true : false
-  }
-
-  private validateWinner(winner: Partial<IWinner>): {
-    isValid: boolean
-    errors?: Record<string, string>
-  } {
-    const errors: Record<string, string> = {}
-
-    if (!winner.name?.trim()) errors.name = 'Name is required.'
-    if (!winner.email?.trim()) {
-      errors.email = 'Email is required.'
-    } else if (!this.validateEmail(winner.email)) {
-      errors.email = 'Invalid email format.'
-    }
-    if (!winner.password?.trim()) {
-      errors.password = 'Password is required.'
-    } else if (!this.validatePassword(winner.password)) {
-      errors.password = 'Password must be at least 6 characters long.'
-    }
-    if (!winner.role?.trim()) {
-      errors.role = 'Role is required.'
-    }
-
-    return {
-      isValid: Object.keys(errors).length === 0,
-      errors: Object.keys(errors).length ? errors : undefined
-    }
-  }
-
-  private clearStorage(): void {
-    localStorage.removeItem(this.storageKey)
   }
 
   public getAllWinners(): IWinner[] {
@@ -70,14 +42,50 @@ class WinnerRepository {
     return winners.find((w) => w.email.toLowerCase().trim() === normalizedEmail) || null
   }
 
-  public addWinner(winnerData: IWinner): { success: boolean; errors?: Record<string, string> } {
+  private validateWinner(winner: IWinner): {
+    isValid: boolean
+    errors?: Record<string, string>
+  } {
+    const errors: Record<string, string> = {}
+
+    if (!winner.name?.trim()) {
+      errors.name = 'Name is required'
+    }
+
+    if (!winner.email?.trim()) {
+      errors.email = 'Email is required'
+    } else if (!this.validateEmail(winner.email)) {
+      errors.email = 'Invalid email format'
+    }
+
+    if (!winner.password?.trim()) {
+      errors.password = 'Password is required'
+    } else if (!this.validatePassword(winner.password)) {
+      errors.password = 'Password must be at least 6 characters long'
+    }
+
+    if (!winner.role?.trim()) {
+      errors.role = 'Role is required'
+    }
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors: Object.keys(errors).length ? errors : undefined
+    }
+  }
+
+  public async addWinner(winnerData: IWinner): Promise<{
+    success: boolean
+    errors?: Record<string, string>
+    validationErrors?: Record<string, string>
+  }> {
     if (!winnerData) {
-      return { success: false, errors: { general: 'Invalid winner data.' } }
+      return { success: false, validationErrors: { general: 'Invalid winner data.' } }
     }
 
     const validation = this.validateWinner(winnerData)
     if (!validation.isValid) {
-      return { success: false, errors: validation.errors }
+      return { success: false, validationErrors: validation.errors }
     }
 
     const normalizedEmail = winnerData.email.toLowerCase().trim()
@@ -86,63 +94,124 @@ class WinnerRepository {
     if (existingWinner) {
       return {
         success: false,
-        errors: { email: 'A winner with this email already exists.' }
+        validationErrors: { email: 'A winner with this email already exists' }
       }
     }
 
     try {
-      const winners = this.getAllWinners()
-      const newWinner = {
-        ...winnerData,
-        id: this.getNextId(), // Додаємо генерацію ID
-        email: normalizedEmail,
-        name: winnerData.name.trim()
+      const response = await fetch('https://api.escuelajs.co/api/v1/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: winnerData.name.trim(),
+          email: normalizedEmail,
+          password: winnerData.password,
+          role: winnerData.role,
+          avatar:
+            'https://www.wfla.com/wp-content/uploads/sites/71/2023/05/GettyImages-1389862392.jpg?w=2560&h=1440&crop=1'
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        return {
+          success: false,
+          errors: { general: errorData.message || 'Failed to create winner on the server.' }
+        }
       }
 
-      winners.push(newWinner)
+      const newWinner = await response.json()
+
+      const winners = this.getAllWinners()
+      winners.push({
+        id: newWinner.id,
+        name: newWinner.name,
+        email: newWinner.email,
+        password: winnerData.password,
+        role: newWinner.role
+      })
+
       localStorage.setItem(this.storageKey, JSON.stringify(winners))
       return { success: true }
     } catch (error) {
       console.error('Failed to save winner:', error)
       return {
         success: false,
-        errors: { general: 'Failed to save winner. Please try again.' }
+        errors: { general: 'Failed to save winner. Please check your connection and try again.' }
       }
     }
   }
 
-  public updateWinner(winner: IWinner): { success: boolean; errors?: Record<string, string> } {
+  public async updateWinner(winner: IWinner): Promise<{
+    success: boolean
+    errors?: Record<string, string>
+    validationErrors?: Record<string, string>
+  }> {
     if (!winner) {
-      return { success: false, errors: { general: 'Invalid winner data.' } }
+      return { success: false, validationErrors: { general: 'Invalid winner data.' } }
     }
 
     const validation = this.validateWinner(winner)
     if (!validation.isValid) {
-      return { success: false, errors: validation.errors }
+      return { success: false, validationErrors: validation.errors }
     }
 
     try {
-      const winners = this.getAllWinners()
       const normalizedEmail = winner.email.toLowerCase().trim()
-      const index = winners.findIndex((w) => w.email.toLowerCase().trim() === normalizedEmail)
+      const existingWinner = this.findByEmail(normalizedEmail)
 
-      if (index === -1) {
-        return { success: false, errors: { email: 'Winner not found.' } }
+      if (!existingWinner) {
+        return {
+          success: false,
+          validationErrors: { email: 'Winner not found' }
+        }
       }
 
-      winners[index] = {
-        ...winner,
-        email: normalizedEmail,
-        name: winner.name.trim()
+      const response = await fetch(`https://api.escuelajs.co/api/v1/users/${winner.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: winner.name.trim(),
+          email: normalizedEmail,
+          password: winner.password,
+          role: winner.role
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        return {
+          success: false,
+          errors: { general: errorData.message || 'Failed to update winner on the server.' }
+        }
       }
 
-      localStorage.setItem(this.storageKey, JSON.stringify(winners))
+      const updatedWinner = await response.json()
+
+      // Update the userAuthenticated ref
+      const winners = this.getAllWinners()
+      const index = winners.findIndex((w) => w.id === winner.id)
+      if (index !== -1) {
+        winners[index] = {
+          id: updatedWinner.id,
+          name: updatedWinner.name,
+          email: updatedWinner.email,
+          password: winner.password,
+          role: updatedWinner.role
+        }
+        this.userAuthenticated.value = [...winners]
+      }
+
       return { success: true }
     } catch (error) {
       console.error('Failed to update winner:', error)
       return {
         success: false,
-        errors: { general: 'Failed to update winner. Please try again.' }
+        errors: { general: 'Failed to update winner. Please check your connection and try again.' }
       }
     }
   }
@@ -211,7 +280,7 @@ class WinnerRepository {
   }
 
   public fetchUsers(): void {
-    fetch('https://api.escuelajs.co/api/v1/users')
+    fetch('https://api.escuelajs.co/api/v1/users?limit=5')
       .then((response) => response.json())
       .then((data) => {
         const winners = data.map(
@@ -235,6 +304,28 @@ class WinnerRepository {
       .catch((error) => {
         console.error('Failed to fetch users:', error)
       })
+  }
+
+  public async findById(id: number): Promise<IWinner | null> {
+    try {
+      const response = await fetch(`https://api.escuelajs.co/api/v1/users/${id}`)
+
+      if (!response.ok) {
+        throw new Error('User not found')
+      }
+
+      const userData = await response.json()
+      return {
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        password: userData.password,
+        role: userData.role
+      } as IWinner
+    } catch (error) {
+      console.error('Failed to fetch user by ID:', error)
+      return null
+    }
   }
 }
 

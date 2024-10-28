@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../components/HomePage.vue'
 import Lottery from '../components/LotteryPage.vue'
 import Login from '../components/LoginPage.vue'
+import { authService } from '../AuthService'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -9,7 +10,14 @@ const router = createRouter({
     {
       path: '/home',
       name: 'Home',
-      component: Home
+      component: Home,
+      children: [
+        {
+          path: 'users/:id',
+          name: 'UserDetails',
+          component: () => import('../components/CustomModal.vue')
+        }
+      ]
     },
     {
       path: '/about',
@@ -19,7 +27,8 @@ const router = createRouter({
     {
       path: '/lottery',
       name: 'Lottery',
-      component: Lottery
+      component: Lottery,
+      meta: { requiresAuth: true }
     },
     {
       path: '/login',
@@ -28,10 +37,17 @@ const router = createRouter({
     },
     {
       path: '/',
-      name: 'Login',
-      component: Login
+      redirect: '/login'
     }
   ]
+})
+
+router.beforeEach((to, from, next) => {
+  if (to.meta.requiresAuth && !authService.isAuthenticated()) {
+    next({ name: 'Login' })
+  } else {
+    next()
+  }
 })
 
 export default router

@@ -68,7 +68,6 @@ import WinnerButton from '@/components/WinnerButton.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import CustomModal from '@/components/CustomModal.vue'
 import WinnerForm from '@/components/WinnerForm.vue'
-import Navigation from '@/components/AppNavigation.vue'
 import WinnerRepository, { IWinner } from '@/WinnerRepository'
 
 const winnerRepo = new WinnerRepository()
@@ -126,30 +125,41 @@ const closeErrorModal = () => {
   modals.value.error.show = false
 }
 
-const handleWinnerAdded = (winner: IWinner) => {
-  const result = winnerRepo.addWinner(winner)
+const handleWinnerAdded = async (winner: IWinner): Promise<boolean> => {
+  try {
+    const result = await winnerRepo.addWinner(winner)
 
-  if (result.success) {
-    loadWinners()
-    showSuccessModal('Winner added successfully!')
-    return true
-  } else {
-    const errorMessages = Object.values(result.errors || {}).join(', ')
-    showErrorModal(errorMessages)
+    if (result.success) {
+      await loadWinners()
+      showSuccessModal('Winner added successfully!')
+      return true
+    } else {
+      const errorMessages = Object.values(result.errors || {}).join(', ')
+      showErrorModal(errorMessages)
+      return false
+    }
+  } catch (error) {
+    showErrorModal('An unexpected error occurred. Please try again.')
     return false
   }
 }
 
-const handleWinnerUpdated = (winner: IWinner) => {
-  const result = winnerRepo.updateWinner(winner)
+const handleWinnerUpdated = async (winner: IWinner): Promise<boolean> => {
+  try {
+    const result = await winnerRepo.updateWinner(winner)
 
-  if (result.success) {
-    loadWinners()
-    closeEditModal()
-    showSuccessModal('Winner updated successfully!')
-  } else {
-    const errorMessages = Object.values(result.errors || {}).join(', ')
-    showErrorModal(errorMessages)
+    if (result.success) {
+      await loadWinners()
+      showSuccessModal('Winner updated successfully!')
+      return true
+    } else {
+      const errorMessages = Object.values(result.errors || {}).join(', ')
+      showErrorModal(errorMessages)
+      return false
+    }
+  } catch (error) {
+    showErrorModal('An unexpected error occurred. Please try again.')
+    return false
   }
 }
 
@@ -201,5 +211,8 @@ const changeSort = ({ type, order }: { type: string; order: string }) => {
   sortConfig.value = { type, order }
 }
 
-onMounted(loadWinners)
+onMounted(async () => {
+  await winnerRepo.fetchUsers()
+  loadWinners()
+})
 </script>
